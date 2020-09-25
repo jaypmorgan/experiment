@@ -22,6 +22,9 @@ class Experiment:
     def _make_filepath(self, filename: str) -> str:
         return str(self.save_path / filename)
 
+    def __repr__(self):
+        return f"Experiment:\n\t- Name: {self.name}\n\t- Log Path: {self.save_path}"
+
     def save_args(self, args) -> None:
         """ Save Args as a text file """
         name = self._make_filepath("hparams.json")
