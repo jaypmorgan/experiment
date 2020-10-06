@@ -15,6 +15,7 @@ class Experiment:
         self.name = name
         self.log_path = Path(log_path)
         self.save_path = self.log_path / self.name
+        self._setup()
 
     def _setup(self):
         self.save_path.mkdir(exist_ok=True, parents=True)

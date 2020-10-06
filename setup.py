@@ -5,7 +5,7 @@ with open("README.md", "r") as file:
 
 setuptools.setup(
     name="labscribe",
-    version="0.0.1",
+    version="0.0.2",
     author="Jay Morgan",
     author_email="jay.p.morgan@outlook.com",
     description="A small package for managing python experiment scripts",
