@@ -1,5 +1,5 @@
 # internal imports
-from typing import Dict
+from typing import Dict, Optional
 
 # external imports
 import gspread
@@ -14,7 +14,7 @@ def update_row(sheet, cell, data):
         sheet.update_cell(cell.row, cell.col + idx, data[idx])
 
 
-def upload_results(sheet_name: str, exp_name: str, results: Dict[str, int]) -> None:
+def upload_results(sheet_name: str, exp_name: str, results: Dict[str, int], worksheet_name: Optional[str] = None) -> None:
     """
     Upload the results to googlesheets. If no row with the exp_name
     exists, then a new row will be added. If the experiment does
@@ -22,10 +22,14 @@ def upload_results(sheet_name: str, exp_name: str, results: Dict[str, int]) -> N
     """
     gc = gspread.service_account()
     sh = gc.open(sheet_name)
+    if worksheet_name is None:
+        worksheet_name = sh.sheet1.title
+    ws = sh.worksheet(worksheet_name)
+
     data = [exp_name] + [v for v in results.values()]
 
     try:
-        cell = sh.sheet1.find(exp_name)
-        update_row(sh.sheet1, cell, data)
+        cell = ws.find(exp_name)
+        update_row(ws, cell, data)
     except gspread.CellNotFound:
-        add_new_row(sh.sheet1, data)
+        add_new_row(ws, data)
