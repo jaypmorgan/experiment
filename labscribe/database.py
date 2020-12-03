@@ -1,10 +1,12 @@
 # internal imports
 import sqlite3
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Tuple, List
 
 
-class Database:
+class SQLDatabase:
     """
     Manage experiments using a sqlite3 database.
     """
@@ -13,7 +15,16 @@ class Database:
         self.hparams = hparams
         self.save_path = Path(save_path)
         self.exp_name = exp_name
+        self.now = datetime.now()
+        self.git_commit = self._get_git_commit()
+        self.exp_id = None
         self._setup()
+
+    def _get_git_commit(self):
+        try:
+            return subprocess.check_output(["git", "rev-parse", "HEAD"]).strip()
+        except:
+            return ""
 
     def _query(self, db_name: str, query: str, params: Tuple = None) -> None:
         """
@@ -41,26 +52,21 @@ class Database:
         create_table_query = ""  # TODO
         self.query(self.save_path, create_table_query)
 
-    def _get_or_create_model_id(self, model_name):
-        query = """SELECT id from models WHERE name=?"""
-        params = (model_name,)
-        model_id = self._select(self.save_path, query, params)
-        if not model_id:
-            # none exists, so we need to create it and return the new id
-            in_query = """INSERT INTO models(name, pretty_name) VALUES (?, ?)"""
-            in_params = (model_name, model_name)
-            self.query(self.save_path, in_query, in_params)
-            model_id = self._select(self.save_path, query, params)
-        return model_id
-
     def _save_exp(self):
-        query = """INSERT into experiments(name, model_id, dataset_id, git, datetime)
-                   VALUES (?, ?, ?, ?, ?)"""
-        params = (
-            self.hparams["exp_name"],
-            self._get_model_id(self.hparams["model_name"]),
-        )
+        query = """INSERT into experiments(name, git, datetime)
+                   VALUES (?, ?, ?)"""
+        params = (self.exp_name, self.gitcommit, self.now)
         self._query(self.save_path, query, params)
+        query = """SELECT id FROM experiments WHERE name=? AND git=? AND datetime=?"""
+        return self._select(self.save_path, query, params)
+
+    def _log_hyperparams(self):
+        query = """INSERT INTO hyperparameters(name, value, exp_id)
+                   VALUES (?, ?, ?)"""
+        for k, v in self.hparams.items():
+            params = (k, v, self.exp_id)
+            # TODO: could insert multiple for better performance
+            self._query(self.save_path, query, params)
 
     def _setup(self) -> None:
         """
@@ -69,3 +75,22 @@ class Database:
         """
         if not self.save_path.exists():
             self._first_time()
+        self.exp_id = self._save_exp()
+        self._log_hyperparams()
+
+    def log_metric(self, name: str, value: float):
+        """
+        Log a simple float/real metric value for this experiment.
+        """
+        query = """INSERT INTO results(metric, value, exp_id) VALUES (?, ?, ?)"""
+        params = (name, value, self.exp_id)
+        self._query(self.save_path, query, params)
+
+    def log_step(self, epoch: int, step: int, dataset_type: str, value: float):
+        """
+        Log a training/validation step where the loss is recorded.
+        """
+        query = """INSERT INTO logs(exp_id, epoch, step, dataset_type, value)
+                   VALUES (?, ?, ?, ?, ?)"""
+        params = (self.exp_id, epoch, step, dataset_type, value)
+        self._query(self.save_path, query, params)

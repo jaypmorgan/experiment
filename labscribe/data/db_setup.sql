@@ -1,24 +1,8 @@
-CREATE TABLE models (
-       id integer PRIMARY KEY,
-       name text NOT NULL,
-       pretty_name text NOT NULL,
-)
-
-CREATE TABLE datasets (
-       id integer PRIMARY KEY,
-       name text NOT NULL,
-       pretty_name text NOT NULL,
-)
-
 CREATE TABLE experiments (
        id integer PRIMARY KEY,
        name text,
-       model_id integer,
-       dataset_id integer,
        git_commit text,
        datetime text NOT NULL,
-       FOREIGN KEY (model_id) REFERENCES models(id),
-       FOREIGN KEY (dataset_id) REFERENCES datasets(id),
 )
 
 CREATE TABLE assets (
