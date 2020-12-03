@@ -3,7 +3,7 @@ import sqlite3
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 
 class SQLDatabase:
@@ -11,7 +11,7 @@ class SQLDatabase:
     Manage experiments using a sqlite3 database.
     """
 
-    def __init__(self, hparams, save_path="results.db", exp_name="default"):
+    def __init__(self, hparams: Dict, save_path="results.db", exp_name="default"):
         self.hparams = hparams
         self.save_path = Path(save_path)
         self.exp_name = exp_name
@@ -32,8 +32,11 @@ class SQLDatabase:
         """
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
-        c.execute(query, params)
-        c.commit()
+        if params is None:
+            c.execute(query)
+        else:
+            c.execute(query, params)
+        conn.commit()
         conn.close()
 
     def _select(self, db_name: str, query: str, params: Tuple = None) -> List:
@@ -44,21 +47,33 @@ class SQLDatabase:
         conn.close()
         return results
 
+    def __get_sql_file(self):
+        local_dir = Path(__file__).parent
+        sql_file = local_dir / "data" / "db_setup.sql"
+        with open(sql_file, "r") as open_file:
+            query = open_file.read()
+        return query
+
     def _first_time(self) -> None:
         """
         Create a brand new database
         """
         self.save_path.touch()
-        create_table_query = ""  # TODO
-        self.query(self.save_path, create_table_query)
+        create_table_queries = self.__get_sql_file().split("\n\n")
+        for query in create_table_queries:
+            self._query(self.save_path, query)
 
     def _save_exp(self):
-        query = """INSERT into experiments(name, git, datetime)
+        query = """INSERT into experiments(name, git_commit, datetime)
                    VALUES (?, ?, ?)"""
-        params = (self.exp_name, self.gitcommit, self.now)
+        params = (self.exp_name, self.git_commit, self.now)
         self._query(self.save_path, query, params)
-        query = """SELECT id FROM experiments WHERE name=? AND git=? AND datetime=?"""
-        return self._select(self.save_path, query, params)
+        query = """SELECT id FROM experiments WHERE name=? AND git_commit=? AND datetime=?"""
+        try:
+            exp_id = self._select(self.save_path, query, params)[0][0]
+        except sqlite3.Error as e:
+            raise ValueError(f"Issue creating experiment, new experiment unknown: {e}")
+        return exp_id
 
     def _log_hyperparams(self):
         query = """INSERT INTO hyperparameters(name, value, exp_id)
