@@ -2,3 +2,4 @@
 /dist/
 /labscribe.egg-info/
 /env/
+*.pyc
