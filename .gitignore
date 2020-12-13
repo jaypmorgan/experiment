@@ -3,3 +3,4 @@
 /labscribe.egg-info/
 /env/
 *.pyc
+/tests/test/

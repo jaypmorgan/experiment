@@ -1,4 +1,5 @@
 # internal imports
+import pickle
 import sqlite3
 import subprocess
 from datetime import datetime
@@ -11,10 +12,9 @@ class SQLDatabase:
     Manage experiments using a sqlite3 database.
     """
 
-    def __init__(self, hparams: Dict, save_path="results.db", exp_name="default"):
-        self.hparams = hparams
-        self.save_path = Path(save_path)
-        self.exp_name = exp_name
+    def __init__(self, name="default", log_path="results.db"):
+        self.save_path = Path(log_path)
+        self.exp_name = name
         self.now = datetime.now()
         self.git_commit = self._get_git_commit()
         self.exp_id = None
@@ -75,10 +75,10 @@ class SQLDatabase:
             raise ValueError(f"Issue creating experiment, new experiment unknown: {e}")
         return exp_id
 
-    def _log_hyperparams(self):
+    def save_args(self, hparams):
         query = """INSERT INTO hyperparameters(name, value, exp_id)
                    VALUES (?, ?, ?)"""
-        for k, v in self.hparams.items():
+        for k, v in hparams.items():
             params = (k, v, self.exp_id)
             # TODO: could insert multiple for better performance
             self._query(self.save_path, query, params)
@@ -91,7 +91,24 @@ class SQLDatabase:
         if not self.save_path.exists():
             self._first_time()
         self.exp_id = self._save_exp()
-        self._log_hyperparams()
+
+    def _save_file(self, obj, filename):
+        filepath: Path = self.save_path.parent / self.exp_name
+        filepath.mkdir(parents=True, exist_ok=True)
+        fn = filepath / filename
+        with open(fn, "wb") as f:
+            pickle.dump(obj, f)
+        return str(fn)
+
+    def log_asset(self, obj, filename, file_type: str = None):
+        realised_path = self._save_file(obj, filename)
+        query = """INSERT INTO assets(exp_id, name, type) VALUES (?, ?, ?)"""
+        params = (
+            self.exp_id,
+            realised_path,
+            file_type if file_type is not None else "",
+        )
+        self._query(self.save_path, query, params)
 
     def log_metric(self, name: str, value: float):
         """

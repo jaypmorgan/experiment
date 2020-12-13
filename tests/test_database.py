@@ -1,5 +1,6 @@
 import os
 import sys
+import pickle
 import unittest
 import sqlite3
 from pathlib import Path
@@ -10,18 +11,14 @@ from labscribe.database import SQLDatabase
 
 class SQLDatabaseTest(unittest.TestCase):
     def setUp(self):
-        self.db = SQLDatabase(
-            hparams={"test": 1, "test2": 2},
-            save_path="tests/results.db",
-            exp_name="test",
-        )
-        # test connection
+        self.db = SQLDatabase(log_path="tests/results.db", name="test")
         self.conn = sqlite3.connect("tests/results.db")
+        self.db.save_args({"test": 1, "test2": 2})
 
     def tearDown(self):
         os.remove("tests/results.db")
 
-    def test_hyperparams(self):
+    def test_save_args(self):
         c = self.conn.cursor()
         c.execute("SELECT * FROM hyperparameters")
         results = c.fetchall()
@@ -52,6 +49,16 @@ class SQLDatabaseTest(unittest.TestCase):
 
     def test_log_step(self):
         self.db.log_step(1.0, 1, "training", 0.5)
+
+    def test_log_asset(self):
+        self.db.log_asset([1], "test.pkl")
+        c = self.conn.cursor()
+        c.execute("SELECT name from assets")
+        results = c.fetchall()
+        self.assertEqual(results[0][0], "tests/test/test.pkl")
+        with open(results[0][0], "rb") as f:
+            contents = pickle.load(f)
+        self.assertEqual(contents[0], 1)
 
 
 if __name__ == "__main__":
