@@ -1,0 +1,3 @@
+include labscribe/data/*
+include requirements.txt
+include README.md
