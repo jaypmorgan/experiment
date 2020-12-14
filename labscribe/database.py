@@ -5,6 +5,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Tuple, List, Dict
+from argparse import Namespace
 
 
 class SQLDatabase:
@@ -76,10 +77,14 @@ class SQLDatabase:
         return exp_id
 
     def save_args(self, hparams):
+        if isinstance(hparams, Namespace):
+            # convert to dict
+            hparams = vars(hparams)
+
         query = """INSERT INTO hyperparameters(name, value, exp_id)
                    VALUES (?, ?, ?)"""
         for k, v in hparams.items():
-            params = (k, v, self.exp_id)
+            params = (str(k), str(v), self.exp_id)
             # TODO: could insert multiple for better performance
             self._query(self.save_path, query, params)
 

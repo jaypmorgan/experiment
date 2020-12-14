@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as file:
 
 setuptools.setup(
     name="labscribe",
-    version="0.3.4",
+    version="0.3.5",
     author="Jay Morgan",
     author_email="jay.p.morgan@outlook.com",
     description="A small package for managing python experiment scripts",
