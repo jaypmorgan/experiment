@@ -12,11 +12,12 @@ To install labscribe, simply install from pypi::
 
 This installs the latest available version. Other versions (including non-stable) can be found on github: https://github.com/jaypmorgan/labscribe
 
-Once installed, you can try out the different recording formats such as GoogleSheets: :ref:`googlesheet`
+Once installed, you can try out the different recording formats such as GoogleSheets.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    googlesheet
+   sqlite
    modules
