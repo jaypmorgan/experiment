@@ -97,12 +97,21 @@ class SQLDatabase:
             self._first_time()
         self.exp_id = self._save_exp()
 
-    def _save_file(self, obj, filename):
+    def _save_file(self, obj, filename: str):
         filepath: Path = self.save_path.parent / self.exp_name
         filepath.mkdir(parents=True, exist_ok=True)
         fn = filepath / filename
-        with open(fn, "wb") as f:
-            pickle.dump(obj, f)
+        if filename.endswith(".pt"):
+            try:
+                import torch
+            except:
+                raise ImportError(
+                    "Saving PyTorch data requires PyTorch to be installed"
+                )
+            torch.save(obj, fn)
+        else:
+            with open(fn, "wb") as f:
+                pickle.dump(obj, f)
         return str(fn)
 
     def log_asset(self, obj, filename, file_type: str = None):
