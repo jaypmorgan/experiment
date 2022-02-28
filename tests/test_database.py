@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import pickle
 import unittest
 import sqlite3
@@ -17,6 +18,7 @@ class SQLDatabaseTest(unittest.TestCase):
 
     def tearDown(self):
         os.remove("tests/results.db")
+        shutil.rmtree("tests/test/", ignore_errors=True)
 
     def test_save_args(self):
         c = self.conn.cursor()
@@ -51,11 +53,29 @@ class SQLDatabaseTest(unittest.TestCase):
         self.db.log_step(1.0, 1, "training", 0.5)
 
     def test_log_asset(self):
-        self.db.log_asset([1], "test.pkl")
+        os.makedirs("tests/test/")
+        self.db.log_asset([1], "tests/test/test.pkl")
         c = self.conn.cursor()
         c.execute("SELECT name from assets")
         results = c.fetchall()
         self.assertEqual(results[0][0], "tests/test/test.pkl")
+        with open(results[0][0], "rb") as f:
+            contents = pickle.load(f)
+        self.assertEqual(contents[0], 1)
+
+        # create a save function that add '.2' to the end of the filename
+        def save_fn(obj, filename):
+            filename += ".2"
+            with open(filename, "wb") as f:
+                pickle.dump(obj, f)
+            return filename
+
+        # test with the save function passed to the log_asset function
+        self.db.log_asset([1], "tests/test/test.pkl", save_fn = save_fn)
+        c = self.conn.cursor()
+        c.execute("SELECT name from assets")
+        results = c.fetchall()
+        self.assertEqual(results[1][0], "tests/test/test.pkl.2")
         with open(results[0][0], "rb") as f:
             contents = pickle.load(f)
         self.assertEqual(contents[0], 1)
