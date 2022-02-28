@@ -4,8 +4,23 @@ import sqlite3
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Callable
 from argparse import Namespace
+
+
+def save_file(obj, filename: str):
+    if filename.endswith(".pt"):
+        try:
+            import torch
+        except:
+            raise ImportError(
+                "Saving PyTorch data requires PyTorch to be installed"
+            )
+        torch.save(obj, filename)
+    else:
+        with open(filename, "wb") as f:
+            pickle.dump(obj, f)
+    return filename
 
 
 class SQLDatabase:
@@ -97,32 +112,32 @@ class SQLDatabase:
             self._first_time()
         self.exp_id = self._save_exp()
 
-    def _save_file(self, obj, filename: str):
-        filepath: Path = self.save_path.parent / self.exp_name
-        filepath.mkdir(parents=True, exist_ok=True)
-        fn = filepath / filename
-        if filename.endswith(".pt"):
-            try:
-                import torch
-            except:
-                raise ImportError(
-                    "Saving PyTorch data requires PyTorch to be installed"
-                )
-            torch.save(obj, fn)
-        else:
-            with open(fn, "wb") as f:
-                pickle.dump(obj, f)
-        return str(fn)
+    def log_asset(self, obj, filename, file_type: str = None, save_fn: Callable = save_file):
+        """
+        Log an asset into the database, while saving it to the disk.
 
-    def log_asset(self, obj, filename, file_type: str = None):
-        realised_path = self._save_file(obj, filename)
+        :param obj: The object to save to disk and log into the asset table of the DB.
+        :param filename: The location of where to save and what to call this new file.
+        :param file_type: An optional type to tag in the database. This is useful for
+            filtering for files in the DB, such as with:
+            "SELECT * FROM assets WHERE type = '<sometype>';"
+        :param save_fn: The function to use to save the file. This function should take
+            the object, and filename as its parameters in that order.
+        :type obj: Any
+        :type filename: str
+        :type file_type: str
+        :type save_fn: Callable
+        :returns: The filename.
+        """
+        save_fn(obj, filename)
         query = """INSERT INTO assets(exp_id, name, type) VALUES (?, ?, ?)"""
         params = (
             self.exp_id,
-            realised_path,
+            filename,
             file_type if file_type is not None else "",
         )
         self._query(self.save_path, query, params)
+        return filename
 
     def log_metric(self, name: str, value: float):
         """
