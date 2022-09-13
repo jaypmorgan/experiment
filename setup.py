@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as file:
 
 setuptools.setup(
     name="labscribe",
-    version="0.3.7",
+    version="0.4.7",
     author="Jay Morgan",
     author_email="jay.p.morgan@outlook.com",
     description="A small package for managing python experiment scripts",
@@ -19,5 +19,4 @@ setuptools.setup(
     python_requires=">=3",
     install_requires=required_packages,
     include_package_data=True,
-    package_data={"labscribe": ["labscribe/data/*.sql"]},
-)
+    package_data={"labscribe": ["labscribe/data/*.sql"]})

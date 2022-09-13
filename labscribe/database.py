@@ -4,14 +4,14 @@ import sqlite3
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, List, Dict, Callable
+from typing import Tuple, List, Callable, Union, Optional
 from argparse import Namespace
 
 
 def save_file(obj, filename: str):
     if filename.endswith(".pt"):
         try:
-            import torch
+            import torch  # pyright: ignore
         except:
             raise ImportError(
                 "Saving PyTorch data requires PyTorch to be installed"
@@ -42,7 +42,7 @@ class SQLDatabase:
         except:
             return ""
 
-    def _query(self, db_name: str, query: str, params: Tuple = None) -> None:
+    def _query(self, db_name: Union[str, Path], query: str, params: Optional[Tuple] = None) -> None:
         """
         Perform a query on the database
         """
@@ -55,10 +55,13 @@ class SQLDatabase:
         conn.commit()
         conn.close()
 
-    def _select(self, db_name: str, query: str, params: Tuple = None) -> List:
+    def _select(self, db_name: Union[str, Path], query: str, params: Optional[Tuple] = None) -> List:
         conn = sqlite3.connect(db_name)
         c = conn.cursor()
-        c.execute(query, params)
+        if params is None:
+            c.execute(query)
+        else:
+            c.execute(query, params)
         results = c.fetchall()
         conn.close()
         return results
@@ -91,7 +94,7 @@ class SQLDatabase:
             raise ValueError(f"Issue creating experiment, new experiment unknown: {e}")
         return exp_id
 
-    def save_args(self, hparams):
+    def log_args(self, hparams):
         if isinstance(hparams, Namespace):
             # convert to dict
             hparams = vars(hparams)
@@ -112,7 +115,7 @@ class SQLDatabase:
             self._first_time()
         self.exp_id = self._save_exp()
 
-    def log_asset(self, obj, filename, file_type: str = None, save_fn: Callable = save_file):
+    def log_asset(self, obj, filename, file_type: Optional[str] = None, save_fn: Callable = save_file):
         """
         Log an asset into the database, while saving it to the disk.
 
@@ -124,7 +127,7 @@ class SQLDatabase:
         :param save_fn: The function to use to save the file. This function should take
             the object, and filename as its parameters in that order.
         :type obj: Any
-        :type filename: str
+        :type filename: Optional[str]
         :type file_type: str
         :type save_fn: Callable
         :returns: The filename.
